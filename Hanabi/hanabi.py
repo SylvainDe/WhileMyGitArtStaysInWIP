@@ -108,6 +108,7 @@ class CheatingPlayer(Player):
 
 class Game(object):
     MAX_NB_HINTS = 7
+    NB_CARDS_IN_HAND = 5
 
     def __init__(self, nb_player):
         self.discard = CardContainer([])
@@ -116,7 +117,7 @@ class Game(object):
         self.stacks = { col: CardStack() for col in Color}
 
         self.deck = Deck.get_deck()
-        self.hands = [Hand([self.draw_card() for _ in range(5)]) for _ in range(nb_player)]
+        self.hands = [Hand([self.draw_card() for _ in range(self.NB_CARDS_IN_HAND)]) for _ in range(nb_player)]
 
         self.remaining_turns = 100
 
@@ -145,6 +146,13 @@ class Game(object):
             self.remaining_turns = len(self.hands)
         return self.deck.draw_card()
 
+    def refill_hand(self, player_index):
+        hand = self.hands[player_index]
+        if len(hand) < self.NB_CARDS_IN_HAND:
+            new_card = self.draw_card()
+            if new_card is not None:
+                hand.add(new_card)
+
     def give_hints(self, player_index, color_told=None, number_told=None):
         if SHOW_PLAYER_ACTIONS:
             print("Player %d gives hint" % (player_index, ))
@@ -167,6 +175,7 @@ class Game(object):
             print("Player %d discards %s" % (player_index, card))
         self.discard.add(card)
         self.add_hint()
+        self.refill_hand(player_index)
 
     def play_card(self, player_index, card_index):
         card = self.pop_card(player_index, card_index)
@@ -182,6 +191,7 @@ class Game(object):
             self.errors_allowed = max(0, self.errors_allowed - 1)
             if self.errors_allowed == 0:
                 self.remaining_turns = 0
+        self.refill_hand(player_index)
 
     def play_turn(self, player_index):
         # SUPER HACK TODO
@@ -210,11 +220,7 @@ class Game(object):
                         self.give_hints((player_index + 1) % 2)
                     else:
                         self.discard_card(player_index, 0) # TODO
-        if len(hand) < 5:
-            new_card = self.draw_card()
-            if new_card is not None:
-                hand.add(new_card)
-        self.remaining_turns -= 1
+        self.remaining_turns = max(0, self.remaining_turns - 1)
 
     def play(self):
         player_turn = 0
@@ -228,7 +234,7 @@ class Game(object):
         return self.get_score()
 
 
-games = [Game(nb_player=2) for i in range(30)]
-#scores = sorted([g.play() for g in games])
+# [24, 28, 23, 27, 30, 20, 21, 21, 30, 27, 29, 26, 27, 26, 23, 27, 29, 27, 25, 23, 27, 30, 30, 27, 23, 28, 27, 25, 30, 23, 27, 30, 27, 24, 20, 26, 27, 18, 28, 30, 23, 24, 30, 30, 21, 25, 23, 28, 27, 30, 27, 17, 29, 27, 30, 25, 28, 21, 30, 21, 27, 30, 16, 25, 25, 29, 27, 22, 30, 26, 19, 27, 21, 28, 27, 28, 27, 30, 29, 27, 26, 27, 28, 27, 29, 25, 27, 25, 27, 29, 27, 25, 28, 29, 22, 28, 30, 25, 26, 26, 27, 28, 28, 26, 25, 29, 29, 28, 27, 29, 27, 30, 28, 29, 30, 22, 28, 27, 23, 30, 20, 25, 27, 27, 26, 19, 30, 27, 26, 25, 27, 27, 24, 27, 28, 29, 26, 30, 30, 28, 28, 28, 30, 27, 25, 30, 30, 26, 21, 25, 29, 29, 28, 28, 28, 26, 27, 27, 24, 30, 29, 25, 24, 27, 27, 23, 30, 27, 27, 27, 25, 23, 30, 26, 22, 23, 26, 28, 25, 29, 30, 25, 26, 30, 23, 25, 29, 21, 30, 29, 26, 27, 28, 29, 26, 29, 30, 30, 28, 27, 28, 24, 28, 29, 27, 26, 29, 30, 23, 28, 24, 26, 24, 30, 26, 23, 26, 25, 26, 26, 30, 25, 22, 27, 27, 26, 30, 29, 27, 27, 29, 27, 30, 24, 30, 28, 26, 27, 24, 21, 30, 27, 27, 24, 30, 22, 30, 26, 30, 30]
+games = [Game(nb_player=2) for i in range(250)]
 scores = [g.play() for g in games]
 print(scores)
