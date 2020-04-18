@@ -205,27 +205,29 @@ class Game(object):
 
         # SUPER HACK TODO
         # players knows everything
-        hand = self.hands[player_index]
-        for i, card in enumerate(hand):
+        playables = []
+        useless = []
+        discardables = []
+        for i, card in enumerate(self.hands[player_index]):
             stack = self.stacks[card.color]
             if stack.card_can_be_played(card):
-                self.play_card(player_index, i)
-                break
+                playables.append(i)
+            elif card in played_cards:
+                useless.append(i)
+            elif remaining[card] > 1: # At least 1 because of the card we are considering
+                discardables.append(i)
+
+        if playables:
+            self.play_card(player_index, min(playables))
+        elif useless:
+            self.discard_card(player_index, min(useless))
+        elif discardables:
+            self.discard_card(player_index, min(discardables))
+        elif self.hints > 0:
+            self.give_hints((player_index + 1) % 2)
         else:
-            for i, card in enumerate(hand):
-                if card in played_cards:
-                    self.discard_card(player_index, i)
-                    break
-            else:
-                for i, card in enumerate(hand):
-                    if remaining[card] > 1: # At least 1 because of the card we are considering
-                        self.discard_card(player_index, i)
-                        break
-                else:
-                    if self.hints > 0:
-                        self.give_hints((player_index + 1) % 2)
-                    else:
-                        self.discard_card(player_index, 0) # TODO
+            self.discard_card(player_index, 0) # TODO
+
         self.remaining_turns = max(0, self.remaining_turns - 1)
 
     def play(self):
