@@ -1,5 +1,6 @@
 from enum import Enum, auto
 import random
+import collections
 
 # Values for development purposes
 SHOW_GAME_STATE_AT_THE_END = False
@@ -193,7 +194,15 @@ class Game(object):
                 self.remaining_turns = 0
         self.refill_hand(player_index)
 
+
     def play_turn(self, player_index):
+        played_cards = set()
+        for _, s in self.stacks.items():
+            played_cards.update(s.cards)
+
+        # Note: this can be deduced from discard and played stacks
+        remaining = collections.Counter(self.deck.cards + sum((hand.cards for hand in self.hands), []))
+
         # SUPER HACK TODO
         # players knows everything
         hand = self.hands[player_index]
@@ -203,16 +212,13 @@ class Game(object):
                 self.play_card(player_index, i)
                 break
         else:
-            played_cards = set()
-            for _, s in self.stacks.items():
-                played_cards.update(s.cards)
             for i, card in enumerate(hand):
                 if card in played_cards:
                     self.discard_card(player_index, i)
                     break
             else:
                 for i, card in enumerate(hand):
-                    if card in self.deck.cards + self.hands[(player_index + 1) % 2].cards:
+                    if remaining[card] > 1: # At least 1 because of the card we are considering
                         self.discard_card(player_index, i)
                         break
                 else:
@@ -235,7 +241,8 @@ class Game(object):
 
 
 def compare_performances():
-    before_scores = [24, 28, 23, 27, 30, 20, 21, 21, 30, 27, 29, 26, 27, 26, 23, 27, 29, 27, 25, 23, 27, 30, 30, 27, 23, 28, 27, 25, 30, 23, 27, 30, 27, 24, 20, 26, 27, 18, 28, 30, 23, 24, 30, 30, 21, 25, 23, 28, 27, 30, 27, 17, 29, 27, 30, 25, 28, 21, 30, 21, 27, 30, 16, 25, 25, 29, 27, 22, 30, 26, 19, 27, 21, 28, 27, 28, 27, 30, 29, 27, 26, 27, 28, 27, 29, 25, 27, 25, 27, 29, 27, 25, 28, 29, 22, 28, 30, 25, 26, 26, 27, 28, 28, 26, 25, 29, 29, 28, 27, 29, 27, 30, 28, 29, 30, 22, 28, 27, 23, 30, 20, 25, 27, 27, 26, 19, 30, 27, 26, 25, 27, 27, 24, 27, 28, 29, 26, 30, 30, 28, 28, 28, 30, 27, 25, 30, 30, 26, 21, 25, 29, 29, 28, 28, 28, 26, 27, 27, 24, 30, 29, 25, 24, 27, 27, 23, 30, 27, 27, 27, 25, 23, 30, 26, 22, 23, 26, 28, 25, 29, 30, 25, 26, 30, 23, 25, 29, 21, 30, 29, 26, 27, 28, 29, 26, 29, 30, 30, 28, 27, 28, 24, 28, 29, 27, 26, 29, 30, 23, 28, 24, 26, 24, 30, 26, 23, 26, 25, 26, 26, 30, 25, 22, 27, 27, 26, 30, 29, 27, 27, 29, 27, 30, 24, 30, 28, 26, 27, 24, 21, 30, 27, 27, 24, 30, 22, 30, 26, 30, 30]
+    before_scores = [26, 28, 23, 25, 30, 21, 23, 20, 30, 27, 29, 26, 27, 26, 23, 27, 29, 27, 25, 24, 28, 30, 30, 27, 23, 28, 27, 25, 30, 24, 28, 30, 27, 25, 20, 26, 27, 20, 29, 30, 25, 26, 30, 30, 21, 25, 27, 28, 27, 30, 27, 20, 29, 27, 30, 26, 30, 21, 30, 21, 27, 30, 23, 25, 25, 29, 27, 24, 30, 26, 26, 27, 25, 28, 27, 28, 27, 30, 29, 27, 26, 27, 27, 27, 29, 26, 27, 25, 27, 29, 28, 25, 27, 29, 22, 28, 30, 25, 26, 26, 29, 28, 28, 28, 26, 29, 29, 28, 28, 29, 27, 30, 30, 29, 30, 24, 25, 27, 23, 30, 22, 29, 27, 28, 25, 19, 30, 27, 26, 25, 27, 27, 24, 27, 28, 29, 27, 29, 30, 28, 28, 28, 30, 27, 25, 30, 29, 26, 21, 25, 30, 29, 28, 28, 28, 26, 29, 27, 25, 30, 29, 26, 24, 27, 27, 23, 30, 27, 27, 27, 25, 23, 30, 26, 25, 25, 27, 26, 25, 29, 30, 25, 28, 30, 23, 25, 29, 21, 30, 29, 26, 27, 28, 29, 26, 29, 30, 30, 27, 27, 27, 28, 28, 29, 27, 27, 29, 30, 24, 28, 25, 26, 25, 30, 27, 23, 25, 26, 26, 26, 30, 25, 22, 27, 27, 29, 30, 30, 27, 27, 29, 27, 30, 24, 30, 28, 27, 27, 23, 21, 30, 27, 27, 24, 30, 22, 30, 26, 30, 30]
+
     games = [Game(nb_player=2) for i in range(len(before_scores))]
     scores = [g.play() for g in games]
     print(scores)
@@ -251,10 +258,9 @@ def compare_performances():
                 losses.append(d)
             print(i, a, b, b - a, "     >" if a > b else "             <")
 
-    print(min(before_scores), min(scores))
-    print(max(before_scores), max(scores))
-    print(sum(before_scores) / len(scores), sum(scores) / len(scores))
-    print("Losses", min(losses) if losses else "NA", len(losses))
-    print("Gains", max(gains) if gains else "NA", len(gains))
+    print("Before: avg:%f, min:%d, max:%d" % (sum(before_scores) / len(before_scores), min(before_scores), max(scores)))
+    print("After: avg:%f, min:%d, max:%d" % (sum(scores) / len(scores), min(scores), max(scores)))
+    print("Losses", min(losses) if losses else "NA", len(losses), sorted(losses))
+    print("Gains", max(gains) if gains else "NA", len(gains), sorted(gains))
 
 compare_performances()
