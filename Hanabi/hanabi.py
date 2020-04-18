@@ -240,18 +240,21 @@ def compare_performances():
     scores = [g.play() for g in games]
     print(scores)
 
-    best_gain = 0
-    worst_loss = 0
-    for a, b in zip(before_scores, scores):
+    gains = []
+    losses = []
+    for i, (a, b) in enumerate(zip(before_scores, scores)):
         if a != b:
             d = b - a
-            best_gain = max(best_gain, d)
-            worst_loss = max(worst_loss, d)
-            print(a, b, b - a, "     >" if a > b else "             <")
+            if d > 0:
+                gains.append(d)
+            else:
+                losses.append(d)
+            print(i, a, b, b - a, "     >" if a > b else "             <")
 
     print(min(before_scores), min(scores))
     print(max(before_scores), max(scores))
     print(sum(before_scores) / len(scores), sum(scores) / len(scores))
-    print(worst_loss, best_gain)
+    print("Losses", min(losses) if losses else "NA", len(losses))
+    print("Gains", max(gains) if gains else "NA", len(gains))
 
 compare_performances()
