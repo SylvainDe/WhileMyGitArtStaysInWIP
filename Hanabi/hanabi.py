@@ -154,9 +154,9 @@ class Game(object):
             if new_card is not None:
                 hand.add(new_card)
 
-    def give_hints(self, player_index, color_told=None, number_told=None):
+    def give_hints(self, player_index, target_player_index, color_told=None, number_told=None):
         if SHOW_PLAYER_ACTIONS:
-            print("Player %d gives hint" % (player_index, ))
+            print("Player %d gives hint to player %d" % (player_index, target_player_index))
         if self.hints <= 0:
             1/0
         self.hints -= 1
@@ -196,6 +196,8 @@ class Game(object):
 
 
     def play_turn(self, player_index):
+        if 0 and SHOW_PLAYER_ACTIONS:
+            print("Starting Player %d's turn" % (player_index, ))
         played_cards = set()
         for _, s in self.stacks.items():
             played_cards.update(s.cards)
@@ -228,11 +230,13 @@ class Game(object):
         elif discardables:
             self.discard_card(player_index, min(discardables))
         elif self.hints > 0:
-            self.give_hints((player_index + 1) % 2)
+            self.give_hints(player_index, (player_index + 1) % 2)
         else:
             self.discard_card(player_index, 0) # TODO
 
         self.remaining_turns = max(0, self.remaining_turns - 1)
+        if 0 and SHOW_PLAYER_ACTIONS:
+            print("Ending Player %d's turn" % (player_index, ))
 
     def play(self):
         player_turn = 0
