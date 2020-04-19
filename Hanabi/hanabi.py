@@ -108,6 +108,7 @@ class CheatingPlayer(Player):
 
 
 class Game(object):
+    # TODO: This should be 8 but this would make performances worse suggesting an issue needs to be analysed and fixed.
     MAX_NB_HINTS = 7
     NB_CARDS_IN_HAND = 5
 
