@@ -200,34 +200,37 @@ class Game(object):
     def play_turn(self, player_index):
         if 0 and SHOW_PLAYER_ACTIONS:
             print("Starting Player %d's turn" % (player_index, ))
-        played_cards = set()
-        for _, s in self.stacks.items():
-            played_cards.update(s.cards)
 
-        other_hands = collections.Counter(sum((hand.cards for i, hand in enumerate(self.hands) if i != player_index), []))
-        # Note: this can be deduced from discard and played stacks
-        remaining = collections.Counter(self.deck.cards + sum((hand.cards for hand in self.hands), []))
+        # Note: This can be seen by player
+        other_hands = sum((hand.cards for i, hand in enumerate(self.hands) if i != player_index), [])
+        # Note: this is cheating
+        all_hands = sum((hand.cards for hand in self.hands), [])
+        # Note: this could be deduced from discard and played stacks
+        remaining = collections.Counter(self.deck.cards + all_hands)
 
-        # SUPER HACK TODO
-        # players knows everything
         playables = []
         useless = []
         discardables = []
         must_be_kept = []
-        for i, card in enumerate(self.hands[player_index]):
-            stack = self.stacks[card.color]
-            if stack.card_can_be_played(card):
+        for i, card in enumerate(self.hands[player_index]):  # Note: this is cheating
+            last_stack_number = self.stacks[card.color].get_last_number()
+            if card.number <= last_stack_number:
+                useless.append(i)
+            elif card.number == last_stack_number + 1:
                 nb1 = len(set(c for c in remaining if c.color == card.color and c.number > card.number))
                 nb2 = len(set(c for c in other_hands if c.color == card.color and c.number > card.number))
                 nb3 = len(set(c for c in other_hands if c.color == card.color and c.number == card.number + 1))
                 playables.append((nb3, nb2, nb1, i))
-            elif card in played_cards:
-                useless.append(i)
-            elif remaining[card] > 1: # At least 1 because of the card we are considering
-                nb1 = len(set(c for c in remaining if c.color == card.color and c.number > card.number))
-                discardables.append((-nb1, -i, i))
             else:
-                must_be_kept.append((-card.number, i, i))
+                assert card.number > last_stack_number + 1
+                if remaining[card] > 1:
+                    # At least 1 because of the card we are considering
+                    # (and at most 2 with standard rules because the only card in more than 2 specimen
+                    # is number 1 which is always playable or useless)
+                    nb1 = len(set(c for c in remaining if c.color == card.color and c.number > card.number))
+                    discardables.append((-nb1, -i, i))
+                else:
+                    must_be_kept.append((-card.number, i, i))
 
         if playables:
             self.play_card(player_index, max(playables)[-1])
