@@ -40,7 +40,7 @@ def part1():
 
 
 
-def part2(name='julie', same_name_in_family=True):
+def part2(name='julie'):
     """ Someone says: "I have two children, at least one of which
     is a girl, whose name is Julie." - what is the probability that
     the other is a girl as well ? (from 2:40 on the video) """
@@ -54,14 +54,10 @@ def part2(name='julie', same_name_in_family=True):
     # Generate boy universe
     boys = [('boy', 'whocares')] * len(girls)
 
-    # Generate universe...
-    if same_name_in_family:
-        universe = list(itertools.product(boys + girls, repeat=2))
-    else:
-        # ...which is assumed not to have duplicated names
-        # TODO: This filtering seems to be pretty wrong
-        universe = list(itertools.product(boys + girls, repeat=2))
-        universe = [l for l in universe if len(set(e[1] for e in l)) == len(l)]
+    # Generate universe which is assumed not to have duplicated names
+    return # TODO: This filtering seems to be pretty wrong
+    universe = list(itertools.product(boys + girls, repeat=2))
+    universe = [l for l in universe if len(set(e[1] for e in l)) == len(l)]
 
     # Check basics from previous step
     at_least_1_girl = [l for l in universe if any(e[0] == 'girl' for e in l)]
@@ -84,8 +80,33 @@ def part2(name='julie', same_name_in_family=True):
     return ret
 
 
+def part3(day=2):
+    """ Someone says: "I have two children, at least one of which
+    is a girl, who was born on a Tuesday." - what is the probability
+	that the other is a girl as well ? (from 8:17 on the video) """
+
+    # Generate universe
+    kids = [(gender, day) for gender in genders for day in range(7)]
+    universe = list(itertools.product(kids, repeat=2))
+
+    # Check basics from previous step
+    at_least_1_girl = [l for l in universe if any(e[0] == 'girl' for e in l)]
+    exactly_2_girls = [l for l in universe if all(e[0] == 'girl' for e in l)]
+    step1 = len(exactly_2_girls) / len(at_least_1_girl)
+    assert step1 == 1/3
+
+    # Generate sub-universes
+    at_least_1_girl_whose_birthday =     [l for l in universe if any(e[0] == 'girl' and e[1] == day for e in l)]
+    exactly_2_girls_and_1_whose_birday = [l for l in universe if any(e[0] == 'girl' and e[1] == day for e in l) and all(e[0] == 'girl' for e in l)]
+
+    # Compute probability
+    ret = len(exactly_2_girls_and_1_whose_birday) / len(at_least_1_girl_whose_birthday)
+    print("part3 (", day, ") ->", ret)
+    return ret
+
+
 
 print(part1() == 1/3)
 for (nam, proba) in girl_names:
     print(part2(nam) == 1/2)
-
+print(part3() == 13/27)
