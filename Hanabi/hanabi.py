@@ -119,8 +119,7 @@ class CheatingPlayer(Player):
 
 
 class Game(object):
-    # TODO: This should be 8 but this would make performances worse suggesting an issue needs to be analysed and fixed.
-    MAX_NB_HINTS = 7
+    MAX_NB_HINTS = 8
     NB_CARDS_IN_HAND = 5
 
     def __init__(self, nb_player):
@@ -253,7 +252,7 @@ class Game(object):
             self.discard_card(player_index, min(useless))
         elif discardables:
             self.discard_card(player_index, max(discardables)[-1])
-        elif self.hints > 0:
+        elif self.hints > 1:  # TODO: This should be "> 0" but this makes performances worse for some reason
             self.give_hints(player_index, (player_index + 1) % 2)
         else:
             self.discard_card(player_index, min(must_be_kept)[-1])
