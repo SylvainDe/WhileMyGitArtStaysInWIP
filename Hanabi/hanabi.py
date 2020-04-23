@@ -118,6 +118,13 @@ class CheatingPlayer(Player):
     pass
 
 
+def count_cards_by_color(cards):
+    color_dict = dict()
+    for c in cards:
+        color_dict.setdefault(c.color, []).append(c.number)
+    return { k: collections.Counter(v) for k, v in color_dict.items() }
+
+
 class Game(object):
     MAX_NB_HINTS = 8
     NB_CARDS_IN_HAND = 5
@@ -212,35 +219,38 @@ class Game(object):
 
         # Note: This can be seen by player
         other_hands = sum((hand.cards for i, hand in enumerate(self.hands) if i != player_index), [])
+        other_hands_by_color = count_cards_by_color(other_hands)
         # Note: this is cheating
         all_hands = sum((hand.cards for hand in self.hands), [])
         # Note: this could be deduced from discard and played stacks
-        remaining = collections.Counter(self.deck.cards + all_hands)
+        remaining_by_color = count_cards_by_color(self.deck.cards + all_hands)
 
         playables = []
         useless = []
         discardables = []
         must_be_kept = []
         for i, card in enumerate(self.hands[player_index]):  # Note: this is cheating
-            nb1 = len(set(c for c in remaining if c.color == card.color and c.number > card.number))
+            remaining_for_color = remaining_by_color[card.color]
+            remaining_higher_cards_in_color = len(set(n for n in remaining_for_color if n > card.number))
             last_stack_number = self.stacks[card.color].get_last_number()
             if card.number <= last_stack_number:
                 useless.append(i)
             elif card.number == last_stack_number + 1:
-                nb2 = len(set(c for c in other_hands if c.color == card.color and c.number > card.number))
-                nb3 = len(set(c for c in other_hands if c.color == card.color and c.number == card.number + 1))
-                playables.append((nb3, nb2, nb1, i))
+                other_hands_for_color = other_hands_by_color.get(card.color, [])
+                nb2 = len(set(n for n in other_hands_for_color if n > card.number))
+                nb3 = len(set(n for n in other_hands_for_color if n == card.number + 1))
+                playables.append((nb3, nb2, remaining_higher_cards_in_color, i))
             else:
                 assert card.number > last_stack_number + 1
-                if not all(remaining[Card(n, card.color)] for n in range(last_stack_number + 1, card.number)):
+                if not all(remaining_for_color[n] for n in range(last_stack_number + 1, card.number)):
                     useless.append(i)
-                elif remaining[card] > 1:
+                elif remaining_for_color[card.number] > 1:
                     # At least 1 because of the card we are considering
                     # (and at most 2 with standard rules because the only card in more than 2 specimen
                     # is number 1 which is always playable or useless)
-                    discardables.append((-nb1, -i, i))
+                    discardables.append((-remaining_higher_cards_in_color, -i, i))
                 else:
-                    must_be_kept.append((nb1, i))
+                    must_be_kept.append((remaining_higher_cards_in_color, i))
 
         # TODO: The logic between discarding and giving hints should probably
         # be more subtle to optimise the end of games (we may want to draw or
