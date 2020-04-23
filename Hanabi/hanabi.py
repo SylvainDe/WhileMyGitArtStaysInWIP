@@ -231,15 +231,15 @@ class Game(object):
         must_be_kept = []
         for i, card in enumerate(self.hands[player_index]):  # Note: this is cheating
             remaining_for_color = remaining_by_color[card.color]
-            remaining_higher_cards_in_color = len(set(n for n in remaining_for_color if n > card.number))
+            remaining_higher_cards_in_color = sum(1 for n in remaining_for_color if n > card.number)
             last_stack_number = self.stacks[card.color].get_last_number()
             if card.number <= last_stack_number:
                 useless.append(i)
             elif card.number == last_stack_number + 1:
                 other_hands_for_color = other_hands_by_color.get(card.color, [])
-                nb2 = len(set(n for n in other_hands_for_color if n > card.number))
-                nb3 = len(set(n for n in other_hands_for_color if n == card.number + 1))
-                playables.append((nb3, nb2, remaining_higher_cards_in_color, i))
+                higher_cards_in_other_hands = sum(1 for n in other_hands_for_color if n > card.number)
+                succ_in_other_hands = (card.number + 1) in other_hands_for_color
+                playables.append((succ_in_other_hands, higher_cards_in_other_hands, remaining_higher_cards_in_color, i))
             else:
                 assert card.number > last_stack_number + 1
                 if not all(remaining_for_color[n] for n in range(last_stack_number + 1, card.number)):
