@@ -303,7 +303,7 @@ def compare_performances():
             print(i, a, b, b - a, "     >" if a > b else "             <")
 
     print("Computed scores in %f" % (end - begin))
-    print("Before: avg:%f, min:%d, max:%d" % (sum(before_scores) / len(before_scores), min(before_scores), max(scores)))
+    print("Before: avg:%f, min:%d, max:%d" % (sum(before_scores) / len(before_scores), min(before_scores), max(before_scores)))
     print("After: avg:%f, min:%d, max:%d" % (sum(scores) / len(scores), min(scores), max(scores)))
     print("Losses", min(losses) if losses else "NA", len(losses), sorted(losses))
     print("Gains", max(gains) if gains else "NA", len(gains), sorted(gains))
