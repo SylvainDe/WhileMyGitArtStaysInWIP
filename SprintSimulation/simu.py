@@ -78,6 +78,11 @@ incertitude = Incertitude.TRIANGULAR
 # Rounding
 rounding_precision = 1
 
+# Display
+graph_char = "#"
+width_graph_count = 40
+width_graph_cum = 40
+
 
 def run_simu():
     tasks = [incertitude.apply(t) for t in order.apply(input_tasks)]
@@ -93,7 +98,13 @@ count = collections.Counter(
     [my_round(run_simu(), rounding_precision) for _ in range(nb_simu)]
 )
 cum = 0
+max_count = count.most_common(1)[0][1]
 for k in sorted(count.keys()):
     v = count[k]
     cum += v
-    print(k, v, v * 100 / nb_simu, cum, cum * 100 / nb_simu)
+    width_count = int(width_graph_count * v / max_count)
+    graph_count = graph_char * width_count + " " * (width_graph_count - width_count)
+    width_cum = int(width_graph_cum * cum / nb_simu)
+    graph_cum = graph_char * width_cum + " " * (width_graph_cum - width_cum)
+    # TODO: Proper string formatting for pretty display
+    print(k, graph_count, graph_cum, v, v * 100 / nb_simu, cum, cum * 100 / nb_simu)
