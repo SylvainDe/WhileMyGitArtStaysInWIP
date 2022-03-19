@@ -34,6 +34,35 @@ class Incertitude(enum.Enum):
         return random_funcs[self](value)
 
 
+def my_round(value, precision):
+    """
+    assert my_round(0, 1) == 0
+    assert my_round(0, 2) == 0
+    assert my_round(-1.4, 0.5) == -1.5
+    assert my_round(-1.4, 1) == -1
+    assert my_round(-1.4, 2) == -2
+    assert my_round(12.9, 1) == 13
+    assert my_round(13.0, 1) == 13
+    assert my_round(13.4, 1) == 13
+    assert my_round(13.5, 1) == 14
+    assert my_round(13.6, 1) == 14
+    assert my_round(14.0, 1) == 14
+    assert my_round(12.9, 2) == 12
+    assert my_round(13.0, 2) == 12
+    assert my_round(13.4, 2) == 14
+    assert my_round(13.5, 2) == 14
+    assert my_round(13.6, 2) == 14
+    assert my_round(14.0, 2) == 14
+    assert my_round(12.9, 0.5) == 13.0
+    assert my_round(13.0, 0.5) == 13.0
+    assert my_round(13.4, 0.5) == 13.5
+    assert my_round(13.5, 0.5) == 13.5
+    assert my_round(13.6, 0.5) == 13.5
+    assert my_round(14.0, 0.5) == 14.0
+    """
+    return round(value / precision) * precision
+
+
 #  Number of simulations
 nb_simu = 10000
 # Number of consumers
@@ -47,7 +76,7 @@ order = Order.RANDOM
 incertitude = Incertitude.CERTAIN
 incertitude = Incertitude.TRIANGULAR
 # Rounding
-# TODO: Required when random adjustment is performed
+rounding_precision = 1
 
 
 def run_simu():
@@ -60,7 +89,9 @@ def run_simu():
     return max(heap)
 
 
-count = collections.Counter([int(run_simu()) for _ in range(nb_simu)])
+count = collections.Counter(
+    [my_round(run_simu(), rounding_precision) for _ in range(nb_simu)]
+)
 cum = 0
 for k in sorted(count.keys()):
     v = count[k]
