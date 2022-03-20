@@ -63,7 +63,12 @@ def my_round(value, precision):
     return round(value / precision) * precision
 
 
-#  Number of simulations
+# Basic configuration
+#####################
+
+# Reproducible results
+reproducible = False
+# Number of simulations
 nb_simu = 10000
 # Number of consumers
 nb_consumer = 4
@@ -77,7 +82,6 @@ incertitude = Incertitude.CERTAIN
 incertitude = Incertitude.TRIANGULAR
 # Rounding
 rounding_precision = 1
-
 # Display
 graph_char = "#"
 width_graph_count = 40
@@ -94,17 +98,42 @@ def run_simu():
     return max(heap)
 
 
-count = collections.Counter(
-    [my_round(run_simu(), rounding_precision) for _ in range(nb_simu)]
-)
-cum = 0
-max_count = count.most_common(1)[0][1]
-for k in sorted(count.keys()):
-    v = count[k]
-    cum += v
-    width_count = int(width_graph_count * v / max_count)
-    graph_count = graph_char * width_count + " " * (width_graph_count - width_count)
-    width_cum = int(width_graph_cum * cum / nb_simu)
-    graph_cum = graph_char * width_cum + " " * (width_graph_cum - width_cum)
-    # TODO: Proper string formatting for pretty display
-    print(k, graph_count, graph_cum, v, v * 100 / nb_simu, cum, cum * 100 / nb_simu)
+def main():
+    if reproducible:
+        print("Warning: random.seed: results will not be as random as expected")
+        random.seed(42)
+    count = collections.Counter(
+        [my_round(run_simu(), rounding_precision) for _ in range(nb_simu)]
+    )
+    cum = 0
+    max_count = count.most_common(1)[0][1]
+    max_count_len = len(str(max_count))
+    max_cum_len = len(str(nb_simu))
+    for k in sorted(count.keys()):
+        v = count[k]
+        cum += v
+        width_count = int(width_graph_count * v / max_count)
+        graph_count_left = graph_char * width_count
+        graph_count_right = " " * (width_graph_count - width_count)
+        width_cum = int(width_graph_cum * cum / nb_simu)
+        graph_cum_left = graph_char * width_cum
+        graph_cum_right = " " * (width_graph_cum - width_cum)
+        count_str = str(v).ljust(max_count_len)
+        cum_str = str(cum).ljust(max_cum_len)
+        count_percent = "{:6.2f}%".format(v * 100 / nb_simu)
+        cum_percent = "{:6.2f}%".format(cum * 100 / nb_simu)
+        print(
+            k,
+            graph_count_left,
+            count_str,
+            graph_count_right,
+            count_percent,
+            graph_cum_left,
+            cum_str,
+            graph_cum_right,
+            cum_percent,
+        )
+
+
+if __name__ == "__main__":
+    main()
