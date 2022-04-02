@@ -21,7 +21,7 @@ import subprocess
 # 03-24 08:39:18.608 I             (parrot-logpacka-2055/parrot-logpacka-2088): logpackager-ulogcat-stream-plugin: Recording is stopped
 
 # Regexp for an ulogcat line
-ULOGCAT_RE = r"^(?P<date>\d\d-\d\d \d\d:\d\d:\d\d.\d\d\d) (?P<level>.) (?P<tag>[^( ]*)\s*\((?:(?P<processname>.*)-(?P<processid>.*)\/)?(?P<threadname>[^\/]*)-(?P<threadid>\d+)\)\s*: (?P<content>.*)$"
+ULOGCAT_RE = r"^(?P<date>\d\d-\d\d \d\d:\d\d:\d\d.\d\d\d) (?P<level>.) (?P<tag>[^( ]*)\s*\((?:(?P<processname>.*)-(?P<processid>.*)\/)?(?P<threadname>[^\/]*)-(?P<threadid>\d+)\)\s*: ?(?P<content>.*)$"
 
 # Output format for an ulogcat line
 ULOGCAT_OUTPUT_FORMAT = (
@@ -65,43 +65,49 @@ DMESG_CONFIG = (DMESG_RE, DMESG_OUTPUT_FORMAT)
 # FORMAT CONFIGURATION
 #########################################
 
-# Log format used - could be ULOGCAT_CONFIG, LOG_CONFIG, DMESG_CONFIG
-LOG_CONFIG = ULOGCAT_CONFIG
+LOG_CONFIGS = {
+    "dmesg": DMESG_CONFIG,
+    "ulogcat": ULOGCAT_CONFIG,
+    "logcat": LOGCAT_CONFIG,
+}
 
 
-def extract_data(filepath):
-    """Extract relevant data from file whose path is provided - return a dictionnary."""
-    with open(filepath, encoding="ISO-8859-1") as f:
-        log_re, out_format = LOG_CONFIG
-        no_match = []
-        bigdict = dict()
-        for line in f:
-            line = line.strip()
-            if line:
-                m = re.match(log_re, line)
-                if m is None:
-                    no_match.append(line)
-                else:
-                    d = m.groupdict()
-                    out_line = out_format.format(**d)
-                    d["ALL"] = "ALL"
-                    for k, v in d.items():
-                        bigdict.setdefault(k, dict()).setdefault(v, []).append(out_line)
-        if no_match:
-            print("%s lines from %s did not match:" % (len(no_match), filepath))
-            for line in no_match:
-                print("  '" + line + "'")
-            print("%s lines from %s did not match" % (len(no_match), filepath))
-        return bigdict
+def extract_data(f, log_config):
+    """Extract relevant data from file - return a dictionnary."""
+    log_re, out_format = log_config
+    no_match = []
+    bigdict = dict()
+    dict_all = bigdict.setdefault("ALL", dict())
+    clean_lst = dict_all.setdefault("clean", [])
+    original_lst = dict_all.setdefault("original", [])
+    for line in f:
+        line = line.strip()
+        if line:
+            m = re.match(log_re, line)
+            if m is None:
+                no_match.append(line)
+            else:
+                d = m.groupdict()
+                out_line = out_format.format(**d)
+                for k, v in d.items():
+                    bigdict.setdefault(k, dict()).setdefault(v, []).append(out_line)
+                clean_lst.append(out_line)
+            original_lst.append(line)
+    if no_match:
+        print("%s lines from %s did not match:" % (len(no_match), f.name))
+        for line in no_match:
+            print("  '" + line + "'")
+        print("%s lines from %s did not match" % (len(no_match), f.name))
+    return bigdict
 
 
-def store_relevant_data_in_a_tmp_folder(filepath):
-    """Store relevant data from file whose path is provided into a tmp folder."""
+def store_relevant_data_in_a_tmp_folder(f, log_config):
+    """Store relevant data from file provided into a tmp folder."""
     # Extract relevant data from file
-    bigdict = extract_data(filepath)
+    bigdict = extract_data(f, log_config)
     # Store data in multiple files in a temporary folder
     tmpdir = tempfile.mkdtemp()
-    print("%s analysed in %s" % (filepath, tmpdir))
+    print("%s analysed in %s" % (f.name, tmpdir))
     for k in ["tag", "threadname", "threadid", "processname", "processid", "ALL"]:
         if k in bigdict:
             newdir = tmpdir + "/" + k
@@ -115,15 +121,29 @@ def store_relevant_data_in_a_tmp_folder(filepath):
     return tmpdir
 
 
-def compare_files(filepaths, difftool="meld"):
+def compare_files(files, log_config, difftool):
     """Compare files by storing relevant data into a file hierarchy compared by a dedicated tool."""
     # Store relevant data in /tmp folders
-    tmpdirs = [store_relevant_data_in_a_tmp_folder(filepath) for filepath in filepaths]
+    tmpdirs = [store_relevant_data_in_a_tmp_folder(f, log_config) for f in files]
 
     # Compare final directories in /tmp
     subprocess.run([difftool] + tmpdirs)
 
 
 if __name__ == "__main__":
-    filepaths = sys.argv[1:]
-    compare_files(filepaths)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "files",
+        type=argparse.FileType("r", encoding="ISO-8859-1"),
+        nargs="+",
+        help="Input files",
+    )
+    parser.add_argument("-format", choices=LOG_CONFIGS.keys(), help="Log format")
+    parser.add_argument(
+        "-difftool", default="meld", help="Diff tool such as meld or kompare"
+    )
+    args = parser.parse_args()
+
+    compare_files(args.files, LOG_CONFIGS[args.format], args.difftool)
