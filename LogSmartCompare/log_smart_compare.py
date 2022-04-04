@@ -21,14 +21,14 @@ import subprocess
 # 03-24 08:39:18.608 I             (parrot-logpacka-2055/parrot-logpacka-2088): logpackager-ulogcat-stream-plugin: Recording is stopped
 
 # Regexp for an ulogcat line
-ULOGCAT_RE = r"^(?P<date>\d\d-\d\d \d\d:\d\d:\d\d.\d\d\d) (?P<level>.) (?P<tag>[^( ]*)\s*\((?:(?P<processname>.*)-(?P<processid>.*)\/)?(?P<threadname>[^\/]*)-(?P<threadid>\d+)\)\s*: ?(?P<content>.*)$"
+ULOGCAT_RE = re.compile(
+    r"^(?P<date>\d\d-\d\d \d\d:\d\d:\d\d.\d\d\d) (?P<level>.) (?P<tag>[^( ]*)\s*\((?:(?P<processname>.*)-(?P<processid>.*)\/)?(?P<threadname>[^\/]*)-(?P<threadid>\d+)\)\s*: ?(?P<content>.*)$"
+)
 
 # Output format for an ulogcat line
 ULOGCAT_OUTPUT_FORMAT = (
     "DATE {level} {tag} ({processname}-PID/{threadname}-TID): {content}"
 )
-
-ULOGCAT_CONFIG = (ULOGCAT_RE, ULOGCAT_OUTPUT_FORMAT)
 
 
 # LOGCAT FORMAT
@@ -39,12 +39,12 @@ ULOGCAT_CONFIG = (ULOGCAT_RE, ULOGCAT_OUTPUT_FORMAT)
 # 03-24 08:36:15.308  4451  4451 I VehiclePropertyService: onChangeEvent id = 555745548
 # 03-24 08:36:15.308  4451  4451 D VehiclePropertyService: onChangeEvent: property ignored
 # Regexp for a logcat line
-LOGCAT_RE = r"^(?P<date>\d\d-\d\d \d\d:\d\d:\d\d.\d\d\d)\s+(?P<processid>\d+)\s+(?P<threadid>\d+)\s+(?P<level>.)\s+(?P<tag>[^:]*):(?P<content>.*)$"
+LOGCAT_RE = re.compile(
+    r"^(?P<date>\d\d-\d\d \d\d:\d\d:\d\d.\d\d\d)\s+(?P<processid>\d+)\s+(?P<threadid>\d+)\s+(?P<level>.)\s+(?P<tag>[^:]*):(?P<content>.*)$"
+)
 
 # Output format for a logcat line
 LOGCAT_OUTPUT_FORMAT = "DATE PID TID {level} {tag} {content}"
-
-LOGCAT_CONFIG = (LOGCAT_RE, LOGCAT_OUTPUT_FORMAT)
 
 
 # DMESG FORMAT
@@ -55,20 +55,19 @@ LOGCAT_CONFIG = (LOGCAT_RE, LOGCAT_OUTPUT_FORMAT)
 # [43189.460255] usb 1-4: Product: USB download gadget
 # [43288.264615] usb 1-4: USB disconnect, device number 27
 # Regexp for a dmesg line
-DMESG_RE = r"^\[(?P<date>\d+\.\d+)\] (?P<content>.*)$"
+DMESG_RE = re.compile(r"^\[(?P<date>\d+\.\d+)\] (?P<content>.*)$")
 # Output format for a dmesg line
 DMESG_OUTPUT_FORMAT = "{content}"
-
-DMESG_CONFIG = (DMESG_RE, DMESG_OUTPUT_FORMAT)
 
 
 # FORMAT CONFIGURATION
 #########################################
 
+# Mapping from name of the log format to tuple (regexp, output format)
 LOG_CONFIGS = {
-    "dmesg": DMESG_CONFIG,
-    "ulogcat": ULOGCAT_CONFIG,
-    "logcat": LOGCAT_CONFIG,
+    "dmesg": (DMESG_RE, DMESG_OUTPUT_FORMAT),
+    "ulogcat": (ULOGCAT_RE, ULOGCAT_OUTPUT_FORMAT),
+    "logcat": (LOGCAT_RE, LOGCAT_OUTPUT_FORMAT),
 }
 
 
@@ -101,14 +100,14 @@ def extract_data(f, log_config):
     return bigdict
 
 
-def store_relevant_data_in_a_tmp_folder(f, log_config):
+def store_relevant_data_in_a_tmp_folder(f, log_config, group_keys):
     """Store relevant data from file provided into a tmp folder."""
     # Extract relevant data from file
     bigdict = extract_data(f, log_config)
     # Store data in multiple files in a temporary folder
     tmpdir = tempfile.mkdtemp()
     print("%s analysed in %s" % (f.name, tmpdir))
-    for k in ["tag", "threadname", "threadid", "processname", "processid", "ALL"]:
+    for k in group_keys:
         if k in bigdict:
             newdir = tmpdir + "/" + k
             os.mkdir(newdir)
@@ -121,10 +120,12 @@ def store_relevant_data_in_a_tmp_folder(f, log_config):
     return tmpdir
 
 
-def compare_files(files, log_config, difftool):
+def compare_files(files, log_config, group_keys, difftool):
     """Compare files by storing relevant data into a file hierarchy compared by a dedicated tool."""
     # Store relevant data in /tmp folders
-    tmpdirs = [store_relevant_data_in_a_tmp_folder(f, log_config) for f in files]
+    tmpdirs = [
+        store_relevant_data_in_a_tmp_folder(f, log_config, group_keys) for f in files
+    ]
 
     # Compare final directories in /tmp
     subprocess.run([difftool] + tmpdirs)
@@ -133,6 +134,7 @@ def compare_files(files, log_config, difftool):
 if __name__ == "__main__":
     import argparse
 
+    # Define argparse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "files",
@@ -140,10 +142,39 @@ if __name__ == "__main__":
         nargs="+",
         help="Input files",
     )
-    parser.add_argument("-format", choices=LOG_CONFIGS.keys(), help="Log format")
+    parser.add_argument(
+        "-format", choices=LOG_CONFIGS.keys(), default="ulogcat", help="Log format"
+    )
     parser.add_argument(
         "-difftool", default="meld", help="Diff tool such as meld or kompare"
     )
-    args = parser.parse_args()
+    default_group_keys = [
+        "tag",
+        "threadname",
+        "threadid",
+        "level",
+        "processname",
+        "processid",
+        "ALL",
+        "toto",
+    ]
+    parser.add_argument(
+        "-key",
+        action="append",
+        help="Keys used to group lines in folders. Unavailable values are ignored. Values available depend on the format used: ALL for all formats, then %s. Default value: %s."
+        % (
+            ";".join(
+                " for %s: %s" % (k, ", ".join(regexp.groupindex.keys()))
+                for (k, (regexp, _)) in LOG_CONFIGS.items()
+            ),
+            default_group_keys,
+        ),
+    )
 
-    compare_files(args.files, LOG_CONFIGS[args.format], args.difftool)
+    # Get arguments
+    args = parser.parse_args()
+    group_keys = default_group_keys if args.key is None else args.key
+    log_config = LOG_CONFIGS[args.format]
+
+    # Perform comparison
+    compare_files(args.files, log_config, group_keys, args.difftool)
