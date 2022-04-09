@@ -74,11 +74,11 @@ LOG_CONFIGS = {
 def extract_data(f, log_config):
     """Extract relevant data from file - return a dictionnary."""
     log_re, out_format = log_config
-    no_match = []
     bigdict = dict()
     dict_all = bigdict.setdefault("ALL", dict())
     clean_lst = dict_all.setdefault("clean", [])
     original_lst = dict_all.setdefault("original", [])
+    no_match = dict_all.setdefault("nomatch", [])
     for line in f:
         line = line.strip()
         if line:
@@ -156,7 +156,6 @@ if __name__ == "__main__":
         "processname",
         "processid",
         "ALL",
-        "toto",
     ]
     parser.add_argument(
         "-key",
